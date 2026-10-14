@@ -3,7 +3,9 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useReducer,
+  useState,
   type ReactNode,
 } from "react";
 
@@ -20,31 +22,31 @@ type CartState = {
 type CartAction =
   | { type: "ADD_ITEM"; product: Product }
   | { type: "REMOVE_ITEM"; id: number }
-  | { type: "CLEAR_CART" };
+  | { type: "INCREASE"; id: number }
+  | { type: "DECREASE"; id: number }
+  | { type: "CLEAR_CART" }
+  | { type: "LOAD_CART"; items: CartItem[] };
 
 type CartContextType = {
   items: CartItem[];
   addItem: (product: Product) => void;
   removeItem: (id: number) => void;
+  increase: (id: number) => void;
+  decrease: (id: number) => void;
   clearCart: () => void;
 };
 
-const CartContext = createContext<CartContextType | undefined>(
-  undefined
-);
+const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const initialState: CartState = {
   items: [],
 };
 
-function cartReducer(
-  state: CartState,
-  action: CartAction
-): CartState {
+function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case "ADD_ITEM": {
       const existingItem = state.items.find(
-        (item) => item.id === action.product.id
+        (item) => item.id === action.product.id,
       );
 
       if (existingItem) {
@@ -52,24 +54,44 @@ function cartReducer(
           items: state.items.map((item) =>
             item.id === action.product.id
               ? { ...item, quantity: item.quantity + 1 }
-              : item
+              : item,
           ),
         };
       }
 
       return {
-        items: [
-          ...state.items,
-          { ...action.product, quantity: 1 },
-        ],
+        items: [...state.items, { ...action.product, quantity: 1 }],
       };
     }
 
     case "REMOVE_ITEM":
       return {
-        items: state.items.filter(
-          (item) => item.id !== action.id
+        items: state.items.filter((item) => item.id !== action.id),
+      };
+
+    case "INCREASE":
+      return {
+        items: state.items.map((item) =>
+          item.id === action.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
         ),
+      };
+
+    case "DECREASE":
+      return {
+        items: state.items
+          .map((item) =>
+            item.id === action.id
+              ? { ...item, quantity: item.quantity - 1 }
+              : item,
+          )
+          .filter((item) => item.quantity > 0),
+      };
+
+    case "LOAD_CART":
+      return {
+        items: action.items,
       };
 
     case "CLEAR_CART":
@@ -80,15 +102,33 @@ function cartReducer(
   }
 }
 
-export function CartProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [state, dispatch] = useReducer(
-    cartReducer,
-    initialState
-  );
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("water-store-cart");
+
+      if (saved) {
+        const items = JSON.parse(saved) as CartItem[];
+
+        if (Array.isArray(items)) {
+          dispatch({ type: "LOAD_CART", items });
+        }
+      }
+    } catch (error) {
+      console.error("Could not load cart:", error);
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+
+    localStorage.setItem("water-store-cart", JSON.stringify(state.items));
+  }, [state.items, loaded]);
 
   function addItem(product: Product) {
     dispatch({ type: "ADD_ITEM", product });
@@ -96,6 +136,14 @@ export function CartProvider({
 
   function removeItem(id: number) {
     dispatch({ type: "REMOVE_ITEM", id });
+  }
+
+  function increase(id: number) {
+    dispatch({ type: "INCREASE", id });
+  }
+
+  function decrease(id: number) {
+    dispatch({ type: "DECREASE", id });
   }
 
   function clearCart() {
@@ -108,6 +156,8 @@ export function CartProvider({
         items: state.items,
         addItem,
         removeItem,
+        increase,
+        decrease,
         clearCart,
       }}
     >
@@ -120,9 +170,7 @@ export function useCart() {
   const context = useContext(CartContext);
 
   if (!context) {
-    throw new Error(
-      "useCart must be used inside CartProvider"
-    );
+    throw new Error("useCart must be used inside CartProvider");
   }
 
   return context;

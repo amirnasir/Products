@@ -3,11 +3,11 @@
 import { useCart } from "@/context/CartContext";
 
 export default function CartPage() {
-  const { items, removeItem, clearCart } = useCart();
+  const { items, removeItem, increase, decrease, clearCart } = useCart();
 
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
-    0
+    0,
   );
 
   if (items.length === 0) {
@@ -27,19 +27,23 @@ export default function CartPage() {
         <div key={item.id}>
           <h2>{item.name}</h2>
           <p>Price: ${item.price.toFixed(2)}</p>
-          <p>Quantity: {item.quantity}</p>
+          <div>
+            <button onClick={() => decrease(item.id)}>−</button>
 
-          <button onClick={() => removeItem(item.id)}>
-            Remove
-          </button>
+            <span style={{ margin: "0 12px" }}>{item.quantity}</span>
+
+            <button onClick={() => increase(item.id)}>+</button>
+          </div>
+
+          <p>Subtotal: ${(item.price * item.quantity).toFixed(2)}</p>
+
+          <button onClick={() => removeItem(item.id)}>Remove</button>
         </div>
       ))}
 
       <h2>Total: ${total.toFixed(2)}</h2>
 
-      <button onClick={clearCart}>
-        Clear Cart
-      </button>
+      <button onClick={clearCart}>Clear Cart</button>
     </main>
   );
 }
