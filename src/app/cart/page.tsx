@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
+import Link from "next/link";
 
 export default function CartPage() {
   const { items, removeItem, increase, decrease, clearCart } = useCart();
@@ -42,7 +43,10 @@ export default function CartPage() {
       ))}
 
       <h2>Total: ${total.toFixed(2)}</h2>
-
+      <Link href="/checkout">
+        <button>Proceed to Checkout</button>
+      </Link>
+      
       <button onClick={clearCart}>Clear Cart</button>
     </main>
   );
