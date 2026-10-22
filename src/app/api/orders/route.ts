@@ -1,5 +1,9 @@
 import { products } from "@/app/data/products";
 import type { CreateOrderRequest } from "@/app/types/Order";
+import type { SaveOrder } from "@/app/types/Order";
+import { saveOrder } from "@/app/lib/orderRepository";
+import {getOrders} from "@/app/lib/orderRepository"
+
 
 export async function POST(request: Request) {
   let order: CreateOrderRequest;
@@ -61,12 +65,30 @@ export async function POST(request: Request) {
 
   const orderId = crypto.randomUUID();
 
-  return Response.json(
-    {
-      orderId,
-      total: Number(total.toFixed(2)),
-      message: "Demo order accepted",
-    },
+  const savedOrder: SaveOrder = {
+    orderId,
+    name: order.name.trim(),
+    email: order.email.trim(),
+    address: order.address.trim(),
+    items: order.items,
+    total: Number(total.toFixed(2)),
+    createAt: new Date().toISOString(),
+  };
+
+  saveOrder(savedOrder);
+
+  return Response.json({
+    orderId: savedOrder.orderId,
+    total: savedOrder.total,
+    message: "Demo order saved in memory",
+  },
     { status: 201 }
   );
 }
+
+export async function GET(){
+  return Response.json(getOrders());
+}
+
+
+
